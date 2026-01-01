@@ -78,10 +78,34 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Handle the initial step."""
         errors = {}
 
+        data_schema = vol.Schema(
+            {
+                vol.Required(
+                    "host",
+                    default=user_input.get("host", "")
+                    if user_input is not None
+                    else "",
+                ): vol.All(str, vol.Length(min=1)),
+                vol.Required(
+                    "port",
+                    default=user_input.get("port", "")
+                    if user_input is not None
+                    else "",
+                ): vol.All(str, vol.Length(min=1)),
+            }
+        )
+
         if user_input is not None:
-            # 检查重复配置
-            await self.async_set_unique_id(user_input["serial_number"])
-            self._abort_if_unique_id_configured()
+            host = user_input.get("host")
+            port = user_input.get("port")
+
+            if not host or not port:
+                errors["base"] = "missing_host_port"
+            else:
+                # use host:port as unique_id
+                unique_id = f"{host}:{port}"
+                await self.async_set_unique_id(unique_id)
+                self._abort_if_unique_id_configured()
 
             # # 测试连接
             # try:
@@ -94,7 +118,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             if not errors:
                 return self.async_create_entry(
-                    title=f"HiVi Sequencer {user_input['serial_number']}",
+                    title=f"HiVi Power Sequencer P10R {unique_id}",
                     data=user_input,
                 )
 
