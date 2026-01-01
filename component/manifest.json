@@ -1,0 +1,16 @@
+{
+  "domain": "hivi_power_sequencer_p10r",
+  "name": "HiVi Power Sequencer P10R",
+  "codeowners": [
+    "@swansmart"
+  ],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://www.home-assistant.io/integrations/hivi_power_sequencer_p10r",
+  "homekit": {},
+  "iot_class": "assumed_state",
+  "quality_scale": "bronze",
+  "requirements": [],
+  "ssdp": [],
+  "zeroconf": []
+}
