@@ -427,7 +427,8 @@ class TCPClient:
                     if not success:
                         # _LOGGER.warning("Send failed, will retry later")
                         # 发送失败，将消息重新放回队列
-                        await self._queue.put(message)
+                        # await self._queue.put(message)
+                        _LOGGER.warning("Send failed")
                     else:
                         # self._queue.task_done()
                         pass
