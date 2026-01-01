@@ -110,6 +110,10 @@ class TCPClient:
         self._last_send_time: Optional[float] = None
         self._last_receive_time: Optional[float] = None
 
+        # keepalive error counter
+        self._consecutive_errors = 0
+        self._max_consecutive_errors = 5
+
         # connect
         # 在后台启动连接任务
         self._reconnect_task = asyncio.create_task(self._auto_reconnect())
@@ -238,11 +242,22 @@ class TCPClient:
                         if self._callback:
                             self._callback(data)
 
-                except ConnectionError:
-                    _LOGGER.warning("Connection lost")
-                    raise
+                    self._consecutive_errors = 0
+
+                except (ConnectionError, IOError) as err:
+                    _LOGGER.warning(f"Connection error: {err}")
+                    break  # 立即重连
+
                 except Exception as err:
-                    _LOGGER.error(f"Data receive error: {err}", exc_info=True)
+                    self._consecutive_errors += 1
+                    _LOGGER.error(f"Data error #{self._consecutive_errors}: {err}")
+                    if self._consecutive_errors >= self._max_consecutive_errors:
+                        _LOGGER.error(
+                            "Too many consecutive errors, triggering reconnect"
+                        )
+                        break  # 错误过多，触发重连
+
+                    await asyncio.sleep(1)  # 错误退避
                     continue
 
         except asyncio.CancelledError:
