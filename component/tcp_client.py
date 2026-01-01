@@ -114,6 +114,10 @@ class TCPClient:
         self._consecutive_errors = 0
         self._max_consecutive_errors = 5
 
+        # for send fail log
+        self._last_connection_warning: Optional[float] = None
+        self._warning_interval = 10  # 每10秒最多记录一次警告
+
         # connect
         # 在后台启动连接任务
         self._reconnect_task = asyncio.create_task(self._auto_reconnect())
@@ -280,7 +284,15 @@ class TCPClient:
             f"send called for {self._host}:{self._port}, data length: {len(data)}"
         )
         if not self._is_connected or not self._writer:
-            _LOGGER.warning("Cannot send data: not connected")
+            # _LOGGER.warning("Cannot send data: not connected")
+            current_time = time.time()
+            if (
+                self._last_connection_warning is None
+                or current_time - self._last_connection_warning
+                >= self._warning_interval
+            ):
+                _LOGGER.warning("Cannot send data: not connected")
+                self._last_connection_warning = current_time
             return False
 
         try:
@@ -531,7 +543,7 @@ async def monitor_tcp_clients(interval=10):
 async def demo():
     """演示如何使用TCPClient"""
     # 设置更详细的日志级别
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
 
     # 启动监控任务
     # monitor_task = asyncio.create_task(monitor_tcp_clients(5))
