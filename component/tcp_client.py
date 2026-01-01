@@ -250,6 +250,7 @@ class TCPClient:
             raise
         except Exception as err:
             _LOGGER.error(f"Keepalive task error: {err}")
+            raise
         finally:
             _LOGGER.debug("Keepalive task finished, cleaning up connection")
             self._cleanup_connection()
