@@ -325,29 +325,38 @@ class TCPClient:
             _LOGGER.debug(f"Writer close completed with: {e}")
 
     async def disconnect(self) -> None:
-        """主动断开连接"""
+        """断开网络连接，但不清理实例资源"""
         _LOGGER.debug(f"disconnect called for {self._host}:{self._port}")
         self._should_stop = True
+
+        # 只清理网络连接相关资源
         self._cleanup_connection()
 
-        # 取消任务
+        # 取消网络相关任务
+        await self._cancel_network_tasks()
+
+        _LOGGER.info(f"Disconnected from {self._host}:{self._port}")
+
+    async def _cancel_network_tasks(self) -> None:
+        """取消网络相关任务"""
         tasks_to_cancel = []
         if self._keepalive_task:
-            tasks_to_cancel.append(self._keepalive_task)
+            tasks_to_cancel.append(("keepalive", self._keepalive_task))
         if self._reconnect_task:
-            tasks_to_cancel.append(self._reconnect_task)
+            tasks_to_cancel.append(("reconnect", self._reconnect_task))
 
-        for task in tasks_to_cancel:
+        for task_name, task in tasks_to_cancel:
             if not task.done():
                 task.cancel()
                 try:
-                    await task
+                    await asyncio.wait_for(task, timeout=3.0)
+                    _LOGGER.debug(f"{task_name} task cancelled successfully")
                 except asyncio.CancelledError:
-                    _LOGGER.debug("Task cancelled successfully")
+                    _LOGGER.debug(f"{task_name} task cancelled")
+                except asyncio.TimeoutError:
+                    _LOGGER.warning(f"{task_name} task cancellation timed out")
                 except Exception as e:
-                    _LOGGER.error(f"Error waiting for task: {e}")
-
-        _LOGGER.info(f"Disconnected from {self._host}:{self._port}")
+                    _LOGGER.error(f"{task_name} task cancellation failed: {e}")
 
     async def __aenter__(self):
         _LOGGER.debug(f"__aenter__ for {self._host}:{self._port}")
@@ -406,34 +415,52 @@ class TCPClient:
             _LOGGER.debug("_send_loop finished")
             self._is_running = False
 
-    async def clean(self):
-        """清理资源"""
+    async def clean(self) -> None:
+        """完全清理所有资源（包括实例本身）"""
         _LOGGER.debug(f"clean called for {self._host}:{self._port}")
-        try:
-            self._is_running = False
-            self._should_stop = True
 
-            send_loop_task = self._send_loop_task
-            if send_loop_task:
-                send_loop_task.cancel()
-                try:
-                    await send_loop_task  # type: ignore
-                    _LOGGER.debug("Send loop task cancelled successfully")
-                except asyncio.CancelledError:
-                    _LOGGER.debug("Send loop task cancelled")
-                except Exception as ex:
-                    _LOGGER.error(f"Send loop task cancellation failed: {ex}")
+        # 先断开连接
+        await self.disconnect()
 
-            # 清空队列
-            while not self._queue.empty():
-                try:
-                    self._queue.get_nowait()
-                    self._queue.task_done()
-                except:
-                    break
+        # 清理发送循环任务和队列
+        await self._cleanup_send_loop()
 
-        except Exception as ex:
-            _LOGGER.error(f"Clean error: {ex}")
+        # 从实例字典中移除自己
+        self._remove_from_instances()
+
+        _LOGGER.debug(f"Completely cleaned up {self._host}:{self._port}")
+
+    async def _cleanup_send_loop(self) -> None:
+        """清理发送循环相关资源"""
+        self._is_running = False
+
+        send_loop_task = self._send_loop_task
+        if send_loop_task:
+            send_loop_task.cancel()
+            try:
+                await send_loop_task  # type: ignore
+                _LOGGER.debug("Send loop task cancelled successfully")
+            except asyncio.CancelledError:
+                _LOGGER.debug("Send loop task cancelled")
+            except Exception as ex:
+                _LOGGER.error(f"Send loop task cancellation failed: {ex}")
+
+        # 清空队列
+        while not self._queue.empty():
+            try:
+                self._queue.get_nowait()
+                self._queue.task_done()
+            except:
+                break
+
+    def _remove_from_instances(self) -> None:
+        """从实例字典中移除自己"""
+        key = f"{self._host}_{self._port}"
+        with TCPClient._lock:
+            if key in TCPClient._instances:
+                _LOGGER.debug(f"Removing instance from TCPClient._instances for {key}")
+                TCPClient._debug_stats[key]["destroyed_count"] += 1
+                del TCPClient._instances[key]
 
     def get_stats(self):
         """获取当前实例的统计信息"""
