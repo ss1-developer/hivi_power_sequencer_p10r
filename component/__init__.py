@@ -10,17 +10,11 @@ from homeassistant.exceptions import (
     ConfigEntryAuthFailed,
     ConfigEntryNotReady,
 )
+from homeassistant.helpers.device_registry import async_get as async_get_device_registry
 
-# TODO List the platforms that you want to support.
-# For your initial PR, limit it to 1 platform.
-_PLATFORMS: list[Platform] = [Platform.LIGHT]
-
-# TODO Create ConfigEntry type alias with API object
-# TODO Rename type alias and update all entry annotations
-# type New_NameConfigEntry = ConfigEntry[MyApi]  # noqa: F821
+from .const import DOMAIN
 
 
-# TODO Update entry annotation
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up HiVi Power Sequencer P10R from a config entry."""
 
@@ -30,7 +24,28 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # TODO 3. Store an API object for your platforms to access
         entry.runtime_data = None
 
-        await hass.config_entries.async_forward_entry_setups(entry, _PLATFORMS)
+        # await hass.config_entries.async_forward_entry_setups(entry, _PLATFORMS)
+
+        host = entry.data["host"]
+        port = entry.data["port"]
+
+        identifiers = {(DOMAIN, f"hivi_power_sequencer_p10r_{host}_{port}")}
+        manufacturer = "HiVi"
+        model = "P10R"
+        sw_version = None
+
+        # 获取设备注册表
+        device_registry = async_get_device_registry(hass)
+
+        # 注册广播主机设备
+        device = device_registry.async_get_or_create(
+            config_entry_id=entry.entry_id,
+            identifiers=identifiers,  # 唯一标识符
+            manufacturer=manufacturer,
+            model=model,
+            sw_version=sw_version,
+            name=f"HiViPowerSequencerP10R ({host}:{port})",
+        )
 
         return True
     except Exception as err:  # pylint: disable=broad-except
@@ -40,4 +55,5 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 # TODO Update entry annotation
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    return await hass.config_entries.async_unload_platforms(entry, _PLATFORMS)
+    # return await hass.config_entries.async_unload_platforms(entry, _PLATFORMS)
+    return True

@@ -6,8 +6,7 @@
         "error": {
             "cannot_connect": "Failed to connect",
             "invalid_auth": "Invalid authentication",
-            "unknown": "Unexpected error",
-            "missing_host_port": "Host and port are both required"
+            "unknown": "Unexpected error"
         },
         "step": {
             "user": {
