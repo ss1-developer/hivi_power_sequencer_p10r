@@ -185,6 +185,7 @@ class TCPClient:
         TCPClient._debug_stats[key]["connect_attempts"] += 1
         TCPClient._debug_stats[key]["last_activity"] = time.time()
 
+        connection_successful = False
         try:
             # 带超时的连接
             async with asyncio.timeout(self._connection_timeout):
@@ -192,6 +193,7 @@ class TCPClient:
                     self._host, self._port
                 )
 
+            connection_successful = True
             self._is_connected = True
             _LOGGER.info(f"Connected to {self._host}:{self._port}")
 
@@ -205,8 +207,11 @@ class TCPClient:
             )
         except Exception as err:
             _LOGGER.error(f"Connection attempt failed: {err}")
-            self._cleanup_connection()
             raise err
+        finally:
+            # 如果连接不成功，确保清理资源
+            if not connection_successful:
+                self._cleanup_connection()
 
     async def _keepalive(self) -> None:
         """维持连接并监听数据"""
@@ -533,7 +538,7 @@ async def demo():
             #     await asyncio.sleep(1)
 
             # 等待一段时间
-            await asyncio.sleep(180)
+            await asyncio.sleep(30)
 
             # 清理
             await client.clean()
