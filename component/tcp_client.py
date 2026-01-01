@@ -409,16 +409,18 @@ class TCPClient:
                 try:
                     # 从队列中获取数据（如果队列为空，则等待直到有数据）
                     message = await asyncio.wait_for(self._queue.get(), timeout=1.0)
-                    _LOGGER.debug(f"Sending message: {message}")
+                    # _LOGGER.debug(f"Sending message: {message}")
 
                     success = await self.send(message.encode())
                     if not success:
-                        _LOGGER.warning("Send failed, will retry later")
+                        # _LOGGER.warning("Send failed, will retry later")
                         # 发送失败，将消息重新放回队列
                         await self._queue.put(message)
+                    else:
+                        # self._queue.task_done()
+                        pass
 
                     await asyncio.sleep(0.1)  # 短暂延迟避免CPU过度使用
-                    self._queue.task_done()
 
                 except asyncio.TimeoutError:
                     # 超时是正常的，用于检查停止条件
