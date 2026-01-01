@@ -21,8 +21,8 @@ async def async_setup_entry(
     host = entry.data["host"]
     port = entry.data["port"]
 
-    _LOGGER.debug(f"button async_setup_entry host = {host}")
-    _LOGGER.debug(f"button async_setup_entry port = {port}")
+    # _LOGGER.debug(f"button async_setup_entry host = {host}")
+    # _LOGGER.debug(f"button async_setup_entry port = {port}")
 
     # 定义按钮配置
     button_configs = [
@@ -60,7 +60,7 @@ class PowerSequencerButton(ButtonEntity):
     """代表电源时序器的虚拟实体"""
 
     def __init__(self, entry, host, port, btn_name):
-        _LOGGER.debug(f"PowerSequencerButton __init__ host = {host} port = {port}")
+        # _LOGGER.debug(f"PowerSequencerButton __init__ host = {host} port = {port}")
         device_identifiers = {(DOMAIN, f"hivi_power_sequencer_p10r_{host}_{port}")}
         self._entry = entry
         self._attr_device_info = {"identifiers": device_identifiers}
