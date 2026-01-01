@@ -34,7 +34,7 @@ class TCPClient:
     )
 
     @staticmethod
-    def get_instance(host, port) -> "TCPClient":
+    def get_instance(host, port) -> Optional["TCPClient"]:
         """
         根据IP地址获取TcpConnectionManager的实例。
         如果给定IP地址的实例不存在，则创建一个新的实例并返回。
@@ -44,14 +44,14 @@ class TCPClient:
         )
         key = f"{host}_{port}"
         with TCPClient._lock:
-            if TCPClient._instances[key] is None:
+            if key not in TCPClient._instances:
                 _LOGGER.debug("No such client will create")
                 TCPClient._instances[key] = TCPClient(host, port)
                 TCPClient._debug_stats[key]["created_count"] += 1
                 TCPClient._debug_stats[key]["last_activity"] = time.time()
             else:
                 _LOGGER.debug("Already has such client")
-        return TCPClient._instances[key]
+            return TCPClient._instances[key]
 
     @staticmethod
     def get_debug_info():
@@ -484,7 +484,7 @@ async def demo():
     logging.basicConfig(level=logging.DEBUG)
 
     # 启动监控任务
-    monitor_task = asyncio.create_task(monitor_tcp_clients(5))
+    # monitor_task = asyncio.create_task(monitor_tcp_clients(5))
 
     try:
         # 创建TCP客户端实例
@@ -494,30 +494,31 @@ async def demo():
         def data_callback(data):
             _LOGGER.info(f"Received data: {data}")
 
-        client.set_callback(data_callback)
+        if client:
+            client.set_callback(data_callback)
 
-        # 连接并发送数据
-        await client.connect()
+            # 连接并发送数据
+            await client.connect()
 
-        # # 发送一些测试数据
-        # for i in range(5):
-        #     await client.enqueue_data(f"Hello {i}")
-        #     await asyncio.sleep(1)
+            # # 发送一些测试数据
+            # for i in range(5):
+            #     await client.enqueue_data(f"Hello {i}")
+            #     await asyncio.sleep(1)
 
-        # 等待一段时间
-        await asyncio.sleep(10)
+            # 等待一段时间
+            await asyncio.sleep(180)
 
-        # 清理
-        await client.clean()
+            # 清理
+            await client.clean()
 
     except Exception as e:
         _LOGGER.error(f"Demo error: {e}")
-    finally:
-        monitor_task.cancel()
-        try:
-            await monitor_task
-        except asyncio.CancelledError:
-            pass
+    # finally:
+    #     monitor_task.cancel()
+    #     try:
+    #         await monitor_task
+    #     except asyncio.CancelledError:
+    #         pass
 
 
 if __name__ == "__main__":
