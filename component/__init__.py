@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import voluptuous as vol
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
@@ -59,6 +60,41 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         }
 
         tcp_client = TCPClient.get_instance(host=host, port=port)
+
+        async def handle_send_data_service(call):
+            """处理发送数据服务调用"""
+            # 从 hass.data 中获取TCP客户端，确保总是最新的
+            entry_data = hass.data.get(DOMAIN, {}).get(entry.entry_id, {})
+            current_tcp_client = entry_data.get("tcp_client")
+
+            if current_tcp_client is None:
+                _LOGGER.error("TCP client not available")
+                return
+
+            message = call.data.get("message", "")
+            _LOGGER.debug(f"handle_send_data_service message = {message}")
+            if not message:
+                _LOGGER.error("No message provided in service call")
+                return
+
+            try:
+                await current_tcp_client.enqueue_data(message)
+                _LOGGER.debug(f"Successfully sent message via service: {message}")
+            except Exception as e:
+                _LOGGER.error(f"Error sending message via service: {e}")
+
+        # 注册服务
+        hass.services.async_register(
+            domain=DOMAIN,
+            service="send_data",
+            service_func=handle_send_data_service,
+            schema=vol.Schema(
+                {
+                    vol.Required("message"): str,
+                }
+            ),
+        )
+
         hass.data[DOMAIN][entry.entry_id]["tcp_client"] = tcp_client
 
         await hass.config_entries.async_forward_entry_setups(entry, ["button"])

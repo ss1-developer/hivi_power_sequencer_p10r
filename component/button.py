@@ -115,6 +115,12 @@ class PowerSequencerButton(ButtonEntity):
                 _LOGGER.debug(f"Send cmd: {cmd}")
                 # await self._tcp_client.send(cmd)
                 # await self._tcp_client.enqueue_data(cmd)
+                # 调用服务
+                await self.hass.services.async_call(
+                    domain=DOMAIN,
+                    service="send_data",
+                    service_data={"message": cmd},
+                )
                 # _LOGGER.debug(f"Sent cmd: {cmd.decode().strip()}")
             except Exception as err:
                 _LOGGER.error(f"Send failed: {err}")
