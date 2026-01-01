@@ -85,40 +85,61 @@ class TestConfigFlow:
         # 验证 setup_entry 被调用
         mock_setup_entry.assert_called_once()
 
+    async def test_flow_missing_host_shows_error(self, hass: HomeAssistant) -> None:
+        """Test that missing host shows error."""
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
 
-async def test_form(hass: HomeAssistant, mock_setup_entry: AsyncMock) -> None:
-    """Test we get the form."""
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": config_entries.SOURCE_USER}
-    )
-
-    print(f"result = {result}")
-
-    assert result["type"] is FlowResultType.FORM
-    assert result["errors"] == {}
-
-    with patch(
-        "homeassistant.components.hivi_power_sequencer_p10r.config_flow.PlaceholderHub.authenticate",
-        return_value=True,
-    ):
+        # 提交缺失 host 的数据
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"],
-            {
-                CONF_HOST: "1.1.1.1",
-                CONF_USERNAME: "test-username",
-                CONF_PASSWORD: "test-password",
-            },
+            user_input={CONF_HOST: "", CONF_PORT: 8092},  # 空的 host
         )
-        await hass.async_block_till_done()
 
-    # assert result["type"] is FlowResultType.CREATE_ENTRY
-    # assert result["title"] == "Name of the device"
-    # assert result["data"] == {
-    #     CONF_HOST: "1.1.1.1",
-    #     CONF_USERNAME: "test-username",
-    #     CONF_PASSWORD: "test-password",
-    # }
-    # assert len(mock_setup_entry.mock_calls) == 1
+        # 验证显示错误
+        assert result["type"] == FlowResultType.FORM
+        assert result["errors"]["base"] == "missing_host_port"
+
+        # 验证错误后表单保留输入的值
+        data_schema = result["data_schema"]
+        assert data_schema({})[CONF_PORT] == 8092  # 端口默认值保留
+        # 注意：host 应该是空字符串，因为验证失败了
+
+
+# async def test_form(hass: HomeAssistant, mock_setup_entry: AsyncMock) -> None:
+#     """Test we get the form."""
+#     result = await hass.config_entries.flow.async_init(
+#         DOMAIN, context={"source": config_entries.SOURCE_USER}
+#     )
+
+#     print(f"result = {result}")
+
+#     assert result["type"] is FlowResultType.FORM
+#     assert result["errors"] == {}
+
+#     with patch(
+#         "homeassistant.components.hivi_power_sequencer_p10r.config_flow.PlaceholderHub.authenticate",
+#         return_value=True,
+#     ):
+#         result = await hass.config_entries.flow.async_configure(
+#             result["flow_id"],
+#             {
+#                 CONF_HOST: "1.1.1.1",
+#                 CONF_USERNAME: "test-username",
+#                 CONF_PASSWORD: "test-password",
+#             },
+#         )
+#         await hass.async_block_till_done()
+
+# assert result["type"] is FlowResultType.CREATE_ENTRY
+# assert result["title"] == "Name of the device"
+# assert result["data"] == {
+#     CONF_HOST: "1.1.1.1",
+#     CONF_USERNAME: "test-username",
+#     CONF_PASSWORD: "test-password",
+# }
+# assert len(mock_setup_entry.mock_calls) == 1
 
 
 # async def test_form_invalid_auth(
