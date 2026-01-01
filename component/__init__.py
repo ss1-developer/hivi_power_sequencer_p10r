@@ -47,6 +47,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             name=f"HiViPowerSequencerP10R ({host}:{port})",
         )
 
+        await hass.config_entries.async_forward_entry_setups(entry, ["button"])
+
         return True
     except Exception as err:  # pylint: disable=broad-except
         raise ConfigEntryError(f"Unexpected error: {err}")
@@ -56,4 +58,4 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     # return await hass.config_entries.async_unload_platforms(entry, _PLATFORMS)
-    return True
+    return await hass.config_entries.async_unload_platforms(entry, ["button"])
