@@ -117,7 +117,7 @@ class TCPClient:
         # connect
         # 在后台启动连接任务
         self._reconnect_task = asyncio.create_task(self._auto_reconnect())
-        # self._send_loop_task = asyncio.create_task(self._send_loop())
+        self._send_loop_task = asyncio.create_task(self._send_loop())
 
         _LOGGER.debug(f"TCPClient initialized for {host}:{port}")
 
@@ -548,13 +548,13 @@ async def demo():
             # 连接并发送数据
             await client.connect()
 
-            # # 发送一些测试数据
-            # for i in range(5):
-            #     await client.enqueue_data(f"Hello {i}")
-            #     await asyncio.sleep(1)
+            # 发送一些测试数据
+            for i in range(5):
+                await client.enqueue_data(f"Hello {i}")
+                await asyncio.sleep(1)
 
             # 等待一段时间
-            await asyncio.sleep(30)
+            await asyncio.sleep(60)
 
             # 清理
             await client.clean()
